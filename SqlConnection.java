@@ -10,9 +10,9 @@ public class SqlConnection {
     private static final String URL = "jdbc:mysql://192.168.1.101/WorkList";
 
     /**
-     * 
+     *
      * @param query - SQL Query
-     * @return 
+     * @return
      */
     public static Object[] sqlGetColumnNames(String query) {
         ArrayList<String> strArr = new ArrayList<>();
@@ -24,7 +24,7 @@ public class SqlConnection {
                 strArr.add(rsmd.getColumnName(i));
             }
         } catch (SQLException e) {
-            System.out.println("SqlGetColumnNames() error: " + e.getLocalizedMessage());
+            System.out.println("SqlGetColumnNames() error: " + e.getLocalizedMessage() + "\nQuery: " + query);
             return strArr.toArray();
         }
         return strArr.toArray();
@@ -35,7 +35,7 @@ public class SqlConnection {
         try (Connection con = DriverManager.getConnection(URL, USER, PASS);
                 Statement stmt = con.createStatement();
                 ResultSet rs = stmt.executeQuery(query)) {
-            
+
             ResultSetMetaData rsmd = rs.getMetaData();
             int colCount = rsmd.getColumnCount();
 
@@ -51,18 +51,30 @@ public class SqlConnection {
             }
             return tableData;
         } catch (SQLException e) {
-            System.out.println("SqlGetTableData() error: " + e.getLocalizedMessage());
+            System.out.println("SqlGetTableData() error: " + e.getLocalizedMessage() + "\nQuery: " + query);
             return null;
         }
     }
-    
+
     public static int sqlExecuteUpdate(String query) {
         try (Connection con = DriverManager.getConnection(URL, USER, PASS);
                 Statement stmt = con.createStatement()) {
             return stmt.executeUpdate(query);
         } catch (SQLException e) {
-            System.out.println("SqlExecuteUpdate() error: "+e.getLocalizedMessage());
+            System.out.println("SqlExecuteUpdate() error: " + e.getLocalizedMessage());
         }
         return 0;
     }
+
+    /*
+    public static boolean sqlExecuteQuery(String query) {
+        try (Connection con = DriverManager.getConnection(URL, USER, PASS);
+                Statement stmt = con.createStatement();
+                ResultSet rs = stmt.executeQuery(query)) {
+        } catch (SQLException e) {
+            System.out.println("SqlExecuteQuery() error: " + e.getLocalizedMessage());
+        }
+        return false;
+    }
+     */
 }

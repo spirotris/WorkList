@@ -1,14 +1,18 @@
 package worklist;
 
 import java.awt.Dimension;
+import java.awt.Point;
+import java.awt.event.ActionEvent;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
-import javax.swing.table.TableModel;
 
 public class UserInterface implements Runnable {
 
-    private TableModel worklistTableModel;
-    private TableModel tasklistTableModel;
+    private JTable Worklist;
+    private JTable Tasklist;
+    private JTabbedPane tabPane;
 
     @Override
     public void run() {
@@ -26,45 +30,105 @@ public class UserInterface implements Runnable {
     }
 
     private JTabbedPane tabPane() {
-        JTabbedPane tabbedPane = new JTabbedPane();
-        tabbedPane.addTab("Worklists", listWorkplaces());
-        tabbedPane.addTab("Tasklist", listTasklist());
-        return tabbedPane;
+        tabPane = new JTabbedPane();
+        Worklist = createTable("Workplace", 0, true);
+        tabPane.addTab("Workplace", new JScrollPane(Worklist));
+        Tasklist = createTable("Tasklist", 1, true);
+        tabPane.addTab("Tasklist", new JScrollPane(Tasklist));
+        tabPane.setEnabledAt(1, false);
+        return tabPane;
     }
 
-    private JScrollPane listWorkplaces() {
-        Object[] colNames = SqlConnection.sqlGetColumnNames("SELECT * FROM Workplace");
-        Object[][] tableData = SqlConnection.sqlGetTableData("SELECT * FROM Workplace");
-        worklistTableModel = new DefaultTableModel(tableData, colNames);
-        worklistTableModel.addTableModelListener(new MyTableModelListener("Workplace"));
-        JTable table = new JTable(worklistTableModel);
+    private JTable createTable(String inputTable, int ID, boolean editable) {
+        DefaultTableModel tableModel = populateTableModel(inputTable, ID);
+        tableModel.addTableModelListener(new MyTableModelListener(inputTable));
+        JTable table = new JTable(tableModel);
+        table.setEnabled(editable);
+        if (ID == 0) {
+            table.addMouseListener(new MouseAdapter() {
+                @Override
+                public void mousePressed(MouseEvent mouseEvent) {
+                    JTable table = (JTable) mouseEvent.getSource();
+                    Point point = mouseEvent.getPoint();
+                    if (mouseEvent.getClickCount() == 2 && table.getSelectedRow() != -1) {
+                        int row = table.rowAtPoint(point);
+                        int rowID = (int) Worklist.getValueAt(row, 0);
+                        tabPane.setEnabledAt(1, true);
+                        Tasklist = createTable("Tasklist", rowID, true);
+                        tabPane.setComponentAt(1, Tasklist);
+                        tabPane.setSelectedIndex(1);
+                    }
+                }
+
+            });
+        }
         // Hide the ID column
-        table.removeColumn(table.getColumnModel().getColumn(0));
+        //table.removeColumn(table.getColumnModel().getColumn(0));
+        table.getColumnModel().getColumn(0).setMaxWidth(25);
         table.setPreferredScrollableViewportSize(new Dimension(700, 500));
         table.setFillsViewportHeight(true);
-        return new JScrollPane(table);
+        return table;
     }
 
-    private JScrollPane listTasklist() {
-        int testID = 1; // FRAGANCIA TEST
-        Object[] colNames = SqlConnection.sqlGetColumnNames("SELECT * FROM Tasklist WHERE ID = " + testID);
-        Object[][] tableData = SqlConnection.sqlGetTableData("SELECT * FROM Tasklist WHERE ID = " + testID);
-        tasklistTableModel = new DefaultTableModel(tableData, colNames);
-        tasklistTableModel.addTableModelListener(new MyTableModelListener("Tasklist WHERE ID = " + testID));
-        JTable table = new JTable(tasklistTableModel);
-        // Hide the ID column
-        table.removeColumn(table.getColumnModel().getColumn(0));
-        table.setPreferredScrollableViewportSize(new Dimension(700, 500));
-        table.setFillsViewportHeight(true);
-        return new JScrollPane(table);
+    private DefaultTableModel populateTableModel(String inputTable, int ID) {
+        String sqlQuery;
+        if (ID > 0) {
+            sqlQuery = "SELECT * FROM "
+                    .concat(inputTable)
+                    .concat(" WHERE ID = ")
+                    .concat(ID + "");
+        } else {
+            sqlQuery = "SELECT * FROM ".concat(inputTable);
+        }
+        Object[] colNames = SqlConnection.sqlGetColumnNames(sqlQuery);
+        Object[][] tableData = SqlConnection.sqlGetTableData(sqlQuery);
+        DefaultTableModel tableModel = new DefaultTableModel(tableData, colNames);
+        return tableModel;
+    }
+
+    private void refreshTable(JTable table) {
+        table.setModel(populateTableModel(tabPane.getTitleAt(tabPane.getSelectedIndex()), 0));
+        table.getColumnModel().getColumn(0).setMaxWidth(25);
+    }
+
+    private String currentTab() {
+        return tabPane.getTitleAt(tabPane.getSelectedIndex());
     }
 
     private JPanel createButtons() {
         JPanel panel = new JPanel();
         panel.setPreferredSize(new Dimension(0, 40));
+
         JButton addButton = new JButton("Add Field");
-        JButton deleteButton = new JButton("Delete Field");
-        deleteButton.setEnabled(false);
+        addButton.addActionListener((ActionEvent e) -> {
+            String inputName = JOptionPane.showInputDialog("Name of new field:");
+            if (!inputName.isEmpty()) {
+                if (currentTab().contains("Workplace")) {
+                    int update = SqlConnection.sqlExecuteUpdate("INSERT INTO Workplace VALUES (null, '" + inputName.trim() + "', 0)");
+                    System.out.println("Query result: " + update);
+                }
+                if (currentTab().contains("Tasklist")) {
+                    int ID = (int) Tasklist.getValueAt(0, 0);
+                    int update = SqlConnection.sqlExecuteUpdate("INSERT INTO Tasklist VALUES (" + ID + ", '" + inputName.trim() + "', 0)");
+                    System.out.println("Query result: " + update);
+                }
+
+                refreshTable(returnFocusedTable());
+            }
+        });
+
+        JButton deleteButton = new JButton("Delete Row");
+        deleteButton.addActionListener((ActionEvent e) -> {
+            if (returnFocusedTable() == null) {
+                return;
+            }
+            JTable curTable = returnFocusedTable();
+            int row = curTable.getSelectedRow();
+            int ID = (int) curTable.getValueAt(row, 0);
+            int update = SqlConnection.sqlExecuteUpdate("DELETE FROM Workplace WHERE ID = " + ID);
+            System.out.println("name: " + ID + " sql: " + update);
+            refreshTable(curTable);
+        });
 
         panel.setLayout(new BoxLayout(panel, BoxLayout.X_AXIS));
         panel.add(Box.createRigidArea(new Dimension(10, 10)));
@@ -73,5 +137,15 @@ public class UserInterface implements Runnable {
         panel.add(deleteButton);
 
         return panel;
+    }
+
+    private JTable returnFocusedTable() {
+        if (Worklist.isShowing()) {
+            return Worklist;
+        }
+        if (Tasklist.isShowing()) {
+            return Tasklist;
+        }
+        return null;
     }
 }
