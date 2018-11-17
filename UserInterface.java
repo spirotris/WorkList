@@ -1,77 +1,127 @@
 package worklist;
 
-import java.awt.Dimension;
+import java.awt.GridLayout;
+import java.awt.Point;
+import java.awt.event.ActionEvent;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.sql.SQLException;
 import javax.swing.*;
-import javax.swing.table.DefaultTableModel;
-import javax.swing.table.TableModel;
 
 public class UserInterface implements Runnable {
 
-    private TableModel worklistTableModel;
-    private TableModel tasklistTableModel;
+    private JTabbedPane tabPane;
 
     @Override
     public void run() {
         JFrame frame = new JFrame("place holder");
+        if(!SqlConnection.sqlCheckIfExists()) {
+            errorPopup("Unable to fetch data from database!\nSetup MySQL server.", "SQL Error");
+            return;
+        }
         frame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
-        frame.setPreferredSize(new Dimension(800, 600));
         frame.setLayout(new BoxLayout(frame.getContentPane(), BoxLayout.Y_AXIS));
-
-        frame.add(tabPane());
-        frame.add(createButtons());
-
+        frame.add(createTabPane());
         frame.pack();
         frame.setLocationRelativeTo(null);
         frame.setVisible(true);
     }
 
-    private JTabbedPane tabPane() {
-        JTabbedPane tabbedPane = new JTabbedPane();
-        tabbedPane.addTab("Worklists", listWorkplaces());
-        tabbedPane.addTab("Tasklist", listTasklist());
-        return tabbedPane;
+    private JTabbedPane createTabPane() {
+        tabPane = new JTabbedPane();
+        try {
+            JPanel worklistPanel = new JPanel();
+            MyTableModel tblModel = new MyTableModel(SqlConnection.sqlGetCachedRowSet("SELECT * FROM Workplace"), 0);
+            JTable table = new JTable(tblModel);
+            table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+            table.addMouseListener(new MyMouseListener());
+            worklistPanel.setLayout(new BoxLayout(worklistPanel, BoxLayout.Y_AXIS));
+            worklistPanel.add(new JScrollPane(table));
+            worklistPanel.add(createButtons(table));
+            tabPane.addTab("Workplace", worklistPanel);
+        } catch (SQLException e) {
+            System.out.println(e.toString());
+        }
+        return tabPane;
     }
 
-    private JScrollPane listWorkplaces() {
-        Object[] colNames = SqlConnection.sqlGetColumnNames("SELECT * FROM Workplace");
-        Object[][] tableData = SqlConnection.sqlGetTableData("SELECT * FROM Workplace");
-        worklistTableModel = new DefaultTableModel(tableData, colNames);
-        worklistTableModel.addTableModelListener(new MyTableModelListener("Workplace"));
-        JTable table = new JTable(worklistTableModel);
-        // Hide the ID column
-        table.removeColumn(table.getColumnModel().getColumn(0));
-        table.setPreferredScrollableViewportSize(new Dimension(700, 500));
-        table.setFillsViewportHeight(true);
-        return new JScrollPane(table);
-    }
-
-    private JScrollPane listTasklist() {
-        int testID = 1; // FRAGANCIA TEST
-        Object[] colNames = SqlConnection.sqlGetColumnNames("SELECT * FROM Tasklist WHERE ID = " + testID);
-        Object[][] tableData = SqlConnection.sqlGetTableData("SELECT * FROM Tasklist WHERE ID = " + testID);
-        tasklistTableModel = new DefaultTableModel(tableData, colNames);
-        tasklistTableModel.addTableModelListener(new MyTableModelListener("Tasklist WHERE ID = " + testID));
-        JTable table = new JTable(tasklistTableModel);
-        // Hide the ID column
-        table.removeColumn(table.getColumnModel().getColumn(0));
-        table.setPreferredScrollableViewportSize(new Dimension(700, 500));
-        table.setFillsViewportHeight(true);
-        return new JScrollPane(table);
-    }
-
-    private JPanel createButtons() {
+    private JPanel createButtons(JTable table) {
         JPanel panel = new JPanel();
-        panel.setPreferredSize(new Dimension(0, 40));
-        JButton addButton = new JButton("Add Field");
-        JButton deleteButton = new JButton("Delete Field");
-        deleteButton.setEnabled(false);
+        MyTableModel tblModel = (MyTableModel) table.getModel();
 
-        panel.setLayout(new BoxLayout(panel, BoxLayout.X_AXIS));
-        panel.add(Box.createRigidArea(new Dimension(10, 10)));
+        JButton addButton = new JButton("Add");
+        addButton.addActionListener((ActionEvent e) -> {
+            tblModel.addRow();
+        });
+
+        JButton deleteButton = new JButton("Delete");
+        deleteButton.addActionListener((ActionEvent e) -> {
+            if (table.getSelectedRow() != -1) {
+                tblModel.removeRow(table.getSelectedRow());
+            }
+        });
+
+        JButton updateButton = new JButton("Commit");
+        updateButton.addActionListener((ActionEvent e) -> {
+            tblModel.updateChanges();
+        });
+
+        JButton discardButton = new JButton("Discard");
+        discardButton.addActionListener((ActionEvent e) -> {
+            tblModel.discardChanges();
+        });
+
+        JButton closeButton = new JButton("Close Tab");
+        closeButton.addActionListener((ActionEvent e) -> {
+            if (tabPane.getSelectedIndex() != 0) {
+                tabPane.removeTabAt(tabPane.getSelectedIndex());
+            }
+        });
+        JButton setupButton = new JButton("Setup");
+        GridLayout layout = new GridLayout(2, 4);
+        layout.setHgap(5);
+        layout.setVgap(5);
+        panel.setLayout(layout);
         panel.add(addButton);
-        panel.add(Box.createRigidArea(new Dimension(10, 10)));
         panel.add(deleteButton);
+        panel.add(updateButton);
+        panel.add(discardButton);
+        panel.add(closeButton);
+        panel.add(setupButton);
 
         return panel;
+    }
+
+    public static void errorPopup(String str, String title) {
+        JOptionPane.showMessageDialog(null, str, title, JOptionPane.ERROR_MESSAGE);
+    }
+    
+    private class MyMouseListener extends MouseAdapter {
+
+        @Override
+        public void mousePressed(MouseEvent e) {
+            JTable table = (JTable) e.getSource();
+            if (e.getClickCount() == 2 && table.getSelectedRow() != -1) {
+                Point point = e.getPoint();
+                int row = table.rowAtPoint(point);
+                MyTableModel tblModel = (MyTableModel) table.getModel();
+                String name = (String) tblModel.getValueAt(row, 1);
+                int ID = (int) tblModel.getValueAt(row, 0);
+                try {
+                    JPanel panel = new JPanel();
+                    tblModel = new MyTableModel(SqlConnection.sqlGetCachedRowSet("SELECT * FROM Tasklist WHERE ID = " + ID), ID);
+                    JTable paneTbl = new JTable(tblModel);
+                    paneTbl.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+                    panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
+                    panel.add(new JScrollPane(paneTbl));
+                    panel.add(createButtons(paneTbl));
+                    tabPane.addTab(name, panel);
+                    tabPane.setSelectedIndex(tabPane.getComponentCount() - 1);
+                } catch (SQLException ex) {
+                    ex.getLocalizedMessage();
+                }
+
+            }
+        }
     }
 }
