@@ -1,0 +1,29 @@
+CREATE DATABASE IF NOT EXISTS `WorkList` DEFAULT CHARACTER SET latin1 COLLATE latin1_swedish_ci;
+USE `WorkList`;
+
+CREATE TABLE IF NOT EXISTS `Tasklist` (
+`TaskID` int(11) NOT NULL,
+  `ID` int(11) NOT NULL,
+  `Name` varchar(255) DEFAULT NULL
+)
+
+CREATE TABLE IF NOT EXISTS `Workplace` (
+`ID` int(11) NOT NULL,
+  `Name` varchar(255) NOT NULL
+)
+
+
+ALTER TABLE `Tasklist`
+ ADD PRIMARY KEY (`TaskID`), ADD UNIQUE KEY `TaskID` (`TaskID`), ADD KEY `Tasklist_ibfk_1` (`ID`);
+
+ALTER TABLE `Workplace`
+ ADD PRIMARY KEY (`ID`);
+
+
+ALTER TABLE `Tasklist`
+MODIFY `TaskID` int(11) NOT NULL AUTO_INCREMENT;
+ALTER TABLE `Workplace`
+MODIFY `ID` int(11) NOT NULL AUTO_INCREMENT;
+
+ALTER TABLE `Tasklist`
+ADD CONSTRAINT `Tasklist_ibfk_1` FOREIGN KEY (`ID`) REFERENCES `Workplace` (`ID`) ON DELETE CASCADE;
