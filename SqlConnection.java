@@ -19,26 +19,11 @@ public class SqlConnection {
                 Statement stmt = con.createStatement()) {
             return stmt.execute("SELECT * FROM Workplace");
         } catch (SQLException e) {
-            System.out.println(e.getLocalizedMessage());
+            System.err.println(e.getLocalizedMessage());
             return false;
         }
     }
 
-    /**
-     * MySQL Connection settings in private strings.
-     *
-     * @return Connection
-     * @throws SQLException
-     */
-    public static Connection sqlGetConnection() throws SQLException {
-        Connection con = DriverManager.getConnection(URL, USER, PASS);
-        return con;
-    }
-
-    /*
-    * Setup a CachedRowSet via factory and execute query.
-    * URL and login hard-coded in file.
-     */
     public static CachedRowSet sqlGetCachedRowSet(String query) {
         try {
             RowSetFactory factory = RowSetProvider.newFactory();
@@ -51,8 +36,17 @@ public class SqlConnection {
             crs.execute();
             return crs;
         } catch (SQLException e) {
-            System.out.println("Unable to cache rowset: " + e.getLocalizedMessage());
+            UserInterface.errorPopup(e.getLocalizedMessage(), "SQL Error");
             return null;
+        }
+    }
+
+    public static void sqlExecuteUpdate(String query) {
+        try (Connection con = DriverManager.getConnection(URL, USER, PASS);
+                Statement stmt = con.createStatement()) {
+            stmt.executeUpdate(query);
+        } catch (SQLException e) {
+            UserInterface.errorPopup(e.getLocalizedMessage(), "SQL Error");
         }
     }
 }
