@@ -2,8 +2,6 @@ package worklist;
 
 import java.awt.GridLayout;
 import java.awt.event.ActionEvent;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.sql.SQLException;
@@ -19,13 +17,16 @@ public class UserInterface implements Runnable {
     @Override
     public void run() {
         JFrame frame = new JFrame("Worktime manager");
+        ImageIcon img = new ImageIcon("graphics/icons8-timesheet-40.png");
+        frame.setIconImage(img.getImage());
         // Checks if we can fetch SQL data, otherwise we quit.
+        // Could be user/pass error or lack of SQL structure.
         if (!SqlConnection.sqlCheckIfExists()) {
             errorPopup("Unable to fetch data from database!\nSetup MySQL server.", "SQL Error");
             return;
         }
-        // Avoid closing when you click the X. Instead we implement a new
-        // windowlistener and launches a prompt to confirm exit.
+        // Avoid exiting when you close the window. Instead we implement a new
+        // windowlistener and launch a prompt to confirm exit.
         frame.setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
         frame.addWindowListener(new WindowAdapter() {
             @Override
@@ -72,7 +73,7 @@ public class UserInterface implements Runnable {
             worklistPanel.add(createButtons(table));
             tabPane.addTab("Workplace", worklistPanel);
         } catch (SQLException e) {
-            errorPopup(e.getLocalizedMessage(), "SQL Error");
+            errorPopup(e.getLocalizedMessage(), "createTabPane() - SQL Error");
         }
         return tabPane;
     }
@@ -115,13 +116,14 @@ public class UserInterface implements Runnable {
         setupButton.addActionListener((ActionEvent e) -> {
             ExportToPdf pdf = new ExportToPdf(table, "Test"); // TODO: FILENAME!
             if(pdf.writePdf()) {
-                System.out.println("success!");
+                System.out.println("Success!");
             } else {
-                System.out.println("FAIL!");
+                System.err.println("FAIL!");
             }
         });
         
-        GridLayout layout = new GridLayout(2, 4);
+        // Layout sections for our button panel. 2 rows and 3 cols with 5px gaps.
+        GridLayout layout = new GridLayout(2, 3);
         layout.setHgap(5);
         layout.setVgap(5);
         panel.setLayout(layout);
@@ -136,14 +138,12 @@ public class UserInterface implements Runnable {
         return panel;
     }
 
+    // Static errorPane that we can call from other classes.
     public static void errorPopup(String str, String title) {
         JOptionPane.showMessageDialog(null, str, title, JOptionPane.ERROR_MESSAGE);
     }
 
-    /*
-    Checks headerValues of each column and sets width to 1 for every
-    header containing ID.
-     */
+    // Checks headerValues and sets ID column widths to 1 to "hide" them
     public static void hideIdCols(JTable table) {
         if (table == null) {
             return;

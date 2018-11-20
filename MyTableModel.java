@@ -13,7 +13,7 @@ public class MyTableModel extends AbstractTableModel {
     private ResultSetMetaData rsmd;
     private int numCols;
     private int numRows;
-    private int ID;
+    private final int ID;
 
     public MyTableModel(CachedRowSet crs, int ID) throws SQLException {
         // Set local variables and calculate rows and column counts.
@@ -90,7 +90,7 @@ public class MyTableModel extends AbstractTableModel {
                 fireTableCellUpdated(rowIndex, columnIndex);
             }
         } catch (SQLException e) {
-            UserInterface.errorPopup(e.getLocalizedMessage(), "SQL Error");
+            UserInterface.errorPopup(e.getLocalizedMessage(), "setValueAt() - SQL Error");
         }
     }
 
@@ -126,6 +126,9 @@ public class MyTableModel extends AbstractTableModel {
             // Our first row is the Primary which autoincrements, so we insert
             // null and let the database do the rest.
             crs.updateNull(1);
+
+            // Loop through the number of columns and ask for input depending
+            // on what the columnName is.
             for (int i = 1; i < numCols; i++) {
                 String colName = getColumnName(i);
 
@@ -168,9 +171,13 @@ public class MyTableModel extends AbstractTableModel {
             crs.insertRow();
             numRows++;
             crs.moveToCurrentRow();
-            fireTableDataChanged();
+            if (ID == 0) {
+                updateChanges();
+            } else {
+                fireTableDataChanged();
+            }
         } catch (SQLException e) {
-            UserInterface.errorPopup(e.getLocalizedMessage(), "SQL Error");
+            UserInterface.errorPopup(e.getLocalizedMessage(), "addRow() - SQL Error");
         }
     }
 
@@ -182,9 +189,13 @@ public class MyTableModel extends AbstractTableModel {
             crs.deleteRow();
             numRows--;
             crs.beforeFirst();
-            fireTableDataChanged();
+            if (ID == 0) {
+                updateChanges();
+            } else {
+                fireTableDataChanged();
+            }
         } catch (SQLException e) {
-            UserInterface.errorPopup(e.getLocalizedMessage(), "SQL Error");
+            UserInterface.errorPopup(e.getLocalizedMessage(), "removeRow() - SQL Error");
         }
 
     }
@@ -208,7 +219,7 @@ public class MyTableModel extends AbstractTableModel {
             crs.restoreOriginal();
             fireTableDataChanged();
         } catch (SQLException e) {
-            UserInterface.errorPopup(e.getLocalizedMessage(), "SQL Error");
+            UserInterface.errorPopup(e.getLocalizedMessage(), "discardChanges() - SQL Error");
         }
 
     }

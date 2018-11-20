@@ -10,9 +10,14 @@ public class ProgressBarCellRenderer extends JProgressBar implements TableCellRe
     @Override
     public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
         MyTableModel tblModel = (MyTableModel) table.getModel();
-        int progress = (int) tblModel.getValueAt(row, 2);
+        int progress = 0;
+        try {
+            progress = Integer.valueOf(tblModel.getValueAt(row, 2)+"");
+        } catch(NumberFormatException e) {
+            System.err.println("Invalid number: "+e.getLocalizedMessage());
+        }
         setValue(progress);
-        setString(progress+"%");
+        setString(progress + "%");
         setStringPainted(true);
         return this;
     }

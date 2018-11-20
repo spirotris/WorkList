@@ -21,7 +21,6 @@ public class ExportToPdf {
 
     public boolean writePdf() {
         try {
-
             int cols = tblModel.getColumnCount();
             String[] columnNames = new String[cols];
             for (int i = 0; i < cols; i++) {
@@ -29,14 +28,13 @@ public class ExportToPdf {
             }
 
             Document document = new Document();
-            PdfWriter.getInstance(document, new FileOutputStream("src/" + filename + ".pdf"));
+            PdfWriter.getInstance(document, new FileOutputStream("pdf/" + filename + ".pdf"));
 
             document.open();
 
             PdfPTable table = new PdfPTable(cols);
             addTableHeader(table, columnNames);
             addRows(table);
-            //addCustomRows(table);
             document.add(table);
             document.close();
             return true;
@@ -60,9 +58,9 @@ public class ExportToPdf {
     private void addRows(PdfPTable table) {
         int rows = tblModel.getRowCount();
         int cols = tblModel.getColumnCount();
-        for (int i = 0; i < cols; i++) {
-            for (int j = 0; j < rows; j++) {
-                Object obj = tblModel.getValueAt(j, i);
+        for (int i = 0; i < rows; i++) {
+            for (int j = 0; j < cols; j++) {
+                Object obj = tblModel.getValueAt(i, j);
                 table.addCell(obj + "");
             }
         }
