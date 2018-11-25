@@ -1,7 +1,10 @@
 package worklist;
 
+import worklist.ui.UserInterface;
 import java.sql.Connection;
+import java.sql.DatabaseMetaData;
 import java.sql.DriverManager;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import javax.sql.rowset.CachedRowSet;
@@ -10,14 +13,22 @@ import javax.sql.rowset.RowSetProvider;
 
 public class SqlConnection {
 
-    private static final String USER = "WorkUser";
-    private static final String PASS = "WorkPass";
-    private static final String URL = "jdbc:mysql://192.168.1.101/WorkList?relaxAutoCommit=true";
+    private static final String USER = "username";
+    private static final String PASS = "password";
+    private static final String DB = "WorkList";
+    private static final String URL = "jdbc:mysql://127.0.0.1/" + DB + "?relaxAutoCommit=true";
 
     public static boolean sqlCheckIfExists() {
-        try (Connection con = DriverManager.getConnection(URL, USER, PASS);
-                Statement stmt = con.createStatement()) {
-            return stmt.execute("SELECT * FROM Workplace");
+        try (Connection con = DriverManager.getConnection(URL, USER, PASS)) {
+            DatabaseMetaData dbm = con.getMetaData();
+            ResultSet rs = dbm.getTables("WorkList", null, null, null);
+            boolean result = false;
+            while (rs.next()) {
+                if (rs.getString("TABLE_NAME").contains("Workplace")) {
+                    result = true;
+                }
+            }
+            return result;
         } catch (SQLException e) {
             System.err.println(e.getLocalizedMessage());
             return false;
